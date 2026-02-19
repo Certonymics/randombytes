@@ -295,6 +295,10 @@ static int randombytes_bsd_randombytes(void *buf, size_t n)
 
 
 #if defined(__EMSCRIPTEN__)
+EM_JS(static bool, randombytes_is_nodejs, (), {
+	return Boolean(ENVIRONMENT_IS_NODE);
+});
+
 static int randombytes_js_randombytes_nodejs(void *buf, size_t n) {
 	const int ret = EM_ASM_INT({
 		var crypto;
@@ -322,6 +326,30 @@ static int randombytes_js_randombytes_nodejs(void *buf, size_t n) {
 	}
 	assert(false); // Unreachable
 }
+
+static int randombytes_js_randombytes_web(void *buf, size_t remaining) {
+	uint8_t *offset = buf;
+	while (remaining)
+	{
+		size_t chunk = remaining > 256 ? 256 : remaining;
+		if (getentropy(offset, chunk) != 0)
+		{
+			return -1;
+		}
+		remaining -= chunk;
+		offset += chunk;
+	}
+	return 0;
+}
+
+static int (*randombytes_js)(void *buf, size_t n) = NULL;
+
+static int randombytes_js_randombytes(void *buf, size_t n) {
+	if (!randombytes_js) {
+		randombytes_js = randombytes_is_nodejs() ? randombytes_js_randombytes_nodejs : randombytes_js_randombytes_web;
+	} 
+	return randombytes_js(buf, n);
+}
 #endif /* defined(__EMSCRIPTEN__) */
 
 
@@ -329,7 +357,7 @@ int randombytes(void *buf, size_t n)
 {
 #if defined(__EMSCRIPTEN__)
 # pragma message("Using crypto api from NodeJS")
-	return randombytes_js_randombytes_nodejs(buf, n);
+	return randombytes_js_randombytes(buf, n);
 #elif defined(__linux__) || defined(__GNU__) || defined(GNU_KFREEBSD)
 # if defined(USE_GLIBC)
 #  pragma message("Using getrandom function call")
