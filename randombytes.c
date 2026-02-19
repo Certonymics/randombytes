@@ -72,7 +72,7 @@
 # include <emscripten.h>
 # include <errno.h>
 # include <stdbool.h>
-# include <unistd.h>
+# include <sys/random.h>
 #endif /* defined(__EMSCRIPTEN__) */
 
 
