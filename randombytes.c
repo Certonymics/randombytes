@@ -72,6 +72,7 @@
 # include <emscripten.h>
 # include <errno.h>
 # include <stdbool.h>
+# include <unistd.h>
 #endif /* defined(__EMSCRIPTEN__) */
 
 
@@ -295,37 +296,24 @@ static int randombytes_bsd_randombytes(void *buf, size_t n)
 
 
 #if defined(__EMSCRIPTEN__)
-EM_JS(static bool, randombytes_is_nodejs, (), {
+EM_JS(bool, randombytes_is_nodejs, (void), {
 	return Boolean(ENVIRONMENT_IS_NODE);
-});
+})
 
-static int randombytes_js_randombytes_nodejs(void *buf, size_t n) {
-	const int ret = EM_ASM_INT({
-		var crypto;
-		try {
-			crypto = require('crypto');
-		} catch (error) {
-			return -2;
-		}
-		try {
-			writeArrayToMemory(crypto.randomBytes($1), $0);
-			return 0;
-		} catch (error) {
-			return -1;
-		}
-	}, buf, n);
-	switch (ret) {
-	case 0:
-		return 0;
-	case -1:
-		errno = EINVAL;
-		return -1;
-	case -2:
-		errno = ENOSYS;
+EM_JS(int, randombytes_js_randombytes_nodejs, (void *buf, size_t n), {
+	var crypto;
+	try {
+		crypto = require('crypto');
+	} catch (error) {
+		return -2;
+	}
+	try {
+		writeArrayToMemory(crypto.randomBytes($1), $0);
+	} catch (error) {
 		return -1;
 	}
-	assert(false); // Unreachable
-}
+	return 0;
+})
 
 static int randombytes_js_randombytes_web(void *buf, size_t remaining) {
 	uint8_t *offset = buf;
