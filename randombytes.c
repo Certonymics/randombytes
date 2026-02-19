@@ -308,7 +308,7 @@ EM_JS(int, randombytes_js_randombytes_nodejs, (void *buf, size_t n), {
 		return -2;
 	}
 	try {
-		writeArrayToMemory(crypto.randomBytes($1), $0);
+		writeArrayToMemory(crypto.randomBytes(n), buf);
 	} catch (error) {
 		return -1;
 	}
